@@ -943,7 +943,7 @@ function updateCacheTable($action, $ident = "")
             DB::insert(
                 prefix_table('cache'),
                 array(
-                    'id' => $record['id'],
+                    'item_id' => $record['id'],
                     'label' => $record['label'],
                     'description' => isset($record['description']) ? $record['description'] : "",
                     'url' => (isset($record['url']) && !empty($record['url'])) ? $record['url'] : "0",
@@ -1044,7 +1044,7 @@ function updateCacheTable($action, $ident = "")
         DB::insert(
             prefix_table('cache'),
             array(
-                'id' => $data['id'],
+                'item_id' => $data['id'],
                 'label' => $data['label'],
                 'description' => $data['description'],
                 'tags' => (isset($tags) && !empty($tags)) ? $tags : "None",
@@ -1061,7 +1061,7 @@ function updateCacheTable($action, $ident = "")
 
         // DELETE an item
     } elseif ($action === "delete_value") {
-        DB::delete(prefix_table('cache'), "id = %i", $ident);
+        DB::delete(prefix_table('cache'), "item_id = %i", $ident);
     }
 }
 

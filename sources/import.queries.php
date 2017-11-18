@@ -361,7 +361,7 @@ switch (filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING)) {
             DB::insert(
                 prefix_table("cache"),
                 array(
-                    'id' => $newId,
+                    'item_id' => $newId,
                     'label' => substr($item[0], 0, 500),
                     'description' => empty($item[4]) ? '' : $item[4],
                     'id_tree' => filter_input(INPUT_POST, 'folder', FILTER_SANITIZE_NUMBER_INT),
@@ -980,7 +980,7 @@ switch (filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING)) {
                         DB::insert(
                             prefix_table("cache"),
                             array(
-                                'id' => $newId,
+                                'item_id' => $newId,
                                 'label' => substr(stripslashes($item[KP_TITLE]), 0, 500),
                                 'description' => stripslashes(str_replace($lineEndSeparator, '<br />', $item[KP_NOTES])),
                                 'url' => (isset($item[KP_NOTES]) && !empty($item[KP_NOTES])) ? $item[KP_NOTES] : "0",

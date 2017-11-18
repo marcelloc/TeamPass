@@ -189,7 +189,7 @@ if (!empty($listPf)) {
 }
 
 DB::query(
-    "SELECT id FROM ".prefix_table("cache")."
+    "SELECT item_id FROM ".prefix_table("cache")."
     $sWhere
     $sOrder",
     $crit
@@ -197,7 +197,7 @@ DB::query(
 $iTotal = DB::count();
 
 $rows = DB::query(
-    "SELECT id, label, description, tags, id_tree, perso, restricted_to, login, folder, author, renewal_period, url, timestamp
+    "SELECT item_id, label, description, tags, id_tree, perso, restricted_to, login, folder, author, renewal_period, url, timestamp
     FROM ".prefix_table("cache")."
     $sWhere
     $sOrder
@@ -247,16 +247,16 @@ if (!isset($_GET['type'])) {
             }
             $accessLevel = min($arrTmp);
             if ($accessLevel === 0) {
-                            $checkbox = '&nbsp;<input type=\"checkbox\" value=\"0\" class=\"mass_op_cb\" id=\"mass_op_cb-'.$record['id'].'\">';
+                            $checkbox = '&nbsp;<input type=\"checkbox\" value=\"0\" class=\"mass_op_cb\" id=\"mass_op_cb-'.$record['item_id'].'\">';
             }
         }
 
         //col1
-        $sOutputItem .= '"<i class=\"fa fa-external-link tip\" title=\"'.$LANG['open_url_link'].'\" onClick=\"javascript:window.location.href = &#039;index.php?page=items&amp;group='.$record['id_tree'].'&amp;id='.$record['id'].'&#039;;\" style=\"cursor:pointer;\"></i>&nbsp;'.
-            '<i class=\"fa fa-eye tip\" title=\"'.$LANG['see_item_title'].'\" onClick=\"javascript:see_item('.$record['id'].','.$record['perso'].');\" style=\"cursor:pointer;\"></i>'.$checkbox.'", ';
+        $sOutputItem .= '"<i class=\"fa fa-external-link tip\" title=\"'.$LANG['open_url_link'].'\" onClick=\"javascript:window.location.href = &#039;index.php?page=items&amp;group='.$record['id_tree'].'&amp;id='.$record['item_id'].'&#039;;\" style=\"cursor:pointer;\"></i>&nbsp;'.
+            '<i class=\"fa fa-eye tip\" title=\"'.$LANG['see_item_title'].'\" onClick=\"javascript:see_item('.$record['item_id'].','.$record['perso'].');\" style=\"cursor:pointer;\"></i>'.$checkbox.'", ';
 
         //col2
-        $sOutputItem .= '"<span id=\"item_label-'.$record['id'].'\">'.htmlspecialchars(stripslashes($record['label']), ENT_QUOTES).'</span>", ';
+        $sOutputItem .= '"<span id=\"item_label-'.$record['item_id'].'\">'.htmlspecialchars(stripslashes($record['label']), ENT_QUOTES).'</span>", ';
 
         //col3
         $sOutputItem .= '"'.str_replace("&amp;", "&", htmlspecialchars(stripslashes($record['login']), ENT_QUOTES)).'", ';
@@ -266,7 +266,7 @@ if (!isset($_GET['type'])) {
         $restrictedToRole = false;
         $rTmp = DB::query(
             "SELECT role_id FROM ".prefix_table("restriction_to_roles")." WHERE item_id = %i",
-            $record['id']
+            $record['item_id']
         );
         foreach ($rTmp as $aTmp) {
             if ($aTmp['role_id'] != "") {

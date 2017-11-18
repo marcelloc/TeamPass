@@ -291,7 +291,7 @@ if (null !== filter_input(INPUT_POST, 'type', FILTER_SANITIZE_STRING)) {
                             DB::delete(prefix_table("log_items"), "id_item = %i", $item['id']);
 
                             //Update CACHE table
-                            DB::delete(prefix_table("cache"), "id = %i", $item['id']);
+                            DB::delete(prefix_table("cache"), "item_id = %i", $item['id']);
                         }
                         //Actualize the variable
                         $_SESSION['nb_folders']--;

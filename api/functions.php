@@ -125,7 +125,7 @@ function addToCacheTable($item_id)
     DB::insert(
         prefix_table("cache"),
         array(
-            "id" => $data['id'],
+            "item_id" => $data['item_id'],
             "label" => $data['label'],
             "description" => $data['description'],
             "tags" => $tags,

@@ -218,6 +218,52 @@ mysqli_query(
     "ALTER TABLE `".$pre."log_items` ADD `increment_id` INT(12) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`increment_id`)"
 );
 
+// alter table emails to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."emails` ADD `increment_id` INT(12) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`increment_id`)"
+);
+
+// alter table items_edition to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."items_edition` ADD `increment_id` INT(12) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`increment_id`)"
+);
+
+// alter table kb_items to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."kb_items` ADD `increment_id` INT(12) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`increment_id`)"
+);
+
+// alter table automatic_del to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."automatic_del` ADD PRIMARY KEY (`item_id`)"
+);
+
+// alter table cache to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."cache` CHANGE `id` `item_id` INT(12) NOT NULL"
+);
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."cache` ADD `increment_id` INT(12) NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`increment_id`)"
+);
+
+// alter table export to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."export` ADD PRIMARY KEY (`id`)"
+);
+
+// alter table export to add an index
+mysqli_query(
+    $db_link,
+    "ALTER TABLE `".$pre."export` ADD PRIMARY KEY (`id`)"
+);
+
 // add field agses-usercardid to Users table
 $res = addColumnIfNotExist(
     $pre."users",
