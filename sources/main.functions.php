@@ -2770,7 +2770,7 @@ function ldapPosixAndWindows($username, $password, $SETTINGS)
     //load ClassLoader
     include_once $SETTINGS['cpassman_dir'].'/sources/SplClassLoader.php';
 
-    $adldap = new SplClassLoader('adLDAP', '../includes/libraries/LDAP');
+    $adldap = new SplClassLoader('Adldap', '../includes/libraries/LDAP');
     $adldap->register();
 
     // Posix style LDAP handles user searches a bit differently
@@ -2786,7 +2786,7 @@ function ldapPosixAndWindows($username, $password, $SETTINGS)
     $ldap_suffix = str_replace(',,', ',', $ldap_suffix);
 
     // Create LDAP connection
-    $adldap = new adLDAP\adLDAP(
+    /*$adldap = new adLDAP\adLDAP(
         array(
             'base_dn' => $SETTINGS['ldap_domain_dn'],
             'account_suffix' => $ldap_suffix,
@@ -2795,7 +2795,37 @@ function ldapPosixAndWindows($username, $password, $SETTINGS)
             'use_ssl' => $SETTINGS['ldap_ssl'],
             'use_tls' => $SETTINGS['ldap_tls'],
         )
-    );
+    );*/
+
+    // Create the configuration array.
+    $config = [
+        // Mandatory Configuration Options
+        'hosts'            => explode(',', $SETTINGS['ldap_domain_controler']),
+        'base_dn'          => $SETTINGS['ldap_domain_dn'],
+        //'username'         => 'admin',
+        //'password'         => 'password',
+
+        // Optional Configuration Options
+        'schema'           => Adldap\Schemas\ActiveDirectory::class,
+        //'account_prefix'   => 'ACME-',
+        'account_suffix'   => str_replace(',,', ',', $ldap_suffix),
+        'port'             => $SETTINGS['ldap_port'],
+        'follow_referrals' => false,
+        'use_ssl'          => $SETTINGS['ldap_ssl'],
+        'use_tls'          => $SETTINGS['ldap_tls'],
+        'version'          => 3,
+        'timeout'          => 5,
+    ];
+
+    $adldap = new Adldap\Adldap();
+    $ad->addProvider($config);
+
+    try {
+        $provider = $ad->connect();
+        // Great, we're connected!
+    } catch (Adldap\Auth\BindException $e) {
+        // Failed to connect.
+    }
 
     // OpenLDAP expects an attribute=value pair
     if ($SETTINGS['ldap_type'] === 'posix') {
@@ -2805,6 +2835,43 @@ function ldapPosixAndWindows($username, $password, $SETTINGS)
     }
 
     // Authenticate the user
+    try {
+        if ($provider->auth()->attempt($auth_username, html_entity_decode($password), $bindAsUser = true)) {
+            // Passed.
+            // Get user info
+            $user->getInfo();
+
+
+            $result = $adldap->user()->info($auth_username, array('mail', 'givenname', 'sn'));
+            $user_email = $result[0]['mail'][0];
+            $user_lastname = $result[0]['sn'][0];
+            $user_name = $result[0]['givenname'][0];
+            $user_found = true;
+
+            // Is user in allowed group
+            if (isset($SETTINGS['ldap_allowed_usergroup']) === true
+                && empty($SETTINGS['ldap_allowed_usergroup']) === false
+            ) {
+                if ($adldap->user()->inGroup($auth_username, $SETTINGS['ldap_allowed_usergroup']) === true) {
+                    $ldapConnection = true;
+                } else {
+                    $ldapConnection = false;
+                }
+            } else {
+                $ldapConnection = true;
+            }
+        } else {
+            // Failed.
+            $ldapConnection = false;
+        }
+    } catch (Adldap\Auth\UsernameRequiredException $e) {
+        // The user didn't supply a username.
+    } catch (Adldap\Auth\PasswordRequiredException $e) {
+        // The user didn't supply a password.
+    }
+
+
+
     if ($adldap->authenticate($auth_username, html_entity_decode($password))) {
         // Get user info
         $result = $adldap->user()->info($auth_username, array('mail', 'givenname', 'sn'));
