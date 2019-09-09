@@ -21,7 +21,6 @@ require_once '../sources/SecureHandler.php';
 session_name('teampass_session');
 session_start();
 error_reporting(E_ERROR | E_PARSE);
-$_SESSION['db_encoding'] = 'utf8';
 $_SESSION['CPM'] = 1;
 
 //include librairies
@@ -33,6 +32,7 @@ require_once '../includes/libraries/Tree/NestedTree/NestedTree.php';
 require_once 'tp.functions.php';
 require_once 'libs/aesctr.php';
 require_once '../includes/config/tp.config.php';
+define('DB_PASSWD_CLEAR', defuse_return_decrypted(DB_PASSWD));
 
 //Build tree
 $tree = new Tree\NestedTree\NestedTree(
@@ -44,7 +44,7 @@ $tree = new Tree\NestedTree\NestedTree(
 
 // DataBase
 // Test DB connexion
-$pass = defuse_return_decrypted(DB_PASSWD);
+$pass = DB_PASSWD_CLEAR;
 $server = DB_HOST;
 $pre = DB_PREFIX;
 $database = DB_NAME;
@@ -280,6 +280,31 @@ if (intval($tmp) === 0) {
     );
 }
 
+// Add new setting 'roles_allowed_to_print_select'
+$tmp = mysqli_num_rows(mysqli_query($db_link, "SELECT * FROM `".$pre."misc` WHERE type = 'admin' AND intitule = 'roles_allowed_to_print_select'"));
+if (intval($tmp) === 0) {
+    mysqli_query(
+        $db_link,
+        "INSERT INTO `".$pre."misc` (`type`, `intitule`, `valeur`) VALUES ('admin', 'roles_allowed_to_print_select', '')"
+    );
+}
+
+// Convert the roles_allowed_to_print value to an array
+$roles_allowed_to_print = mysqli_fetch_row(mysqli_query(
+    $db_link,
+    'SELECT valeur
+    FROM '.$pre.'misc
+    WHERE type = "admin" AND intitule = "roles_allowed_to_print"'
+));
+if ($roles_allowed_to_print[0] !== null && empty($roles_allowed_to_print[0]) === false) {
+    mysqli_query(
+        $db_link,
+        'UPDATE '.$pre."misc
+        SET valeur = '".json_encode(explode(';', $roles_allowed_to_print[0]))."'
+        WHERE type = 'admin' AND intitule = 'roles_allowed_to_print'"
+    );
+}
+
 // Copy all items passwords
 $db_count = mysqli_fetch_row(
     mysqli_query(
@@ -303,7 +328,7 @@ if ((int) $db_count[0] === 0) {
         if ($data['encryption_type'] !== 'teampass_aes') {
             mysqli_query(
                 $db_link,
-                'INSERT INTO `'.$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
+                "INSERT INTO `".$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
                 VALUES (NULL, 'item', '".$data['id']."', '".$data['pw']."');"
             );
         }
@@ -324,7 +349,7 @@ if ((int) $db_count[0] === 0) {
         if ($data['encryption_type'] !== 'teampass_aes') {
             mysqli_query(
                 $db_link,
-                'INSERT INTO `'.$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
+                "INSERT INTO `".$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
                 VALUES (NULL, 'field', '".$data['id']."', '".$data['data']."');"
             );
         }
@@ -346,7 +371,7 @@ if ((int) $db_count[0] === 0) {
         if ($data['encryption_type'] !== 'teampass_aes') {
             mysqli_query(
                 $db_link,
-                'INSERT INTO `'.$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
+                "INSERT INTO `".$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
                 VALUES (NULL, 'log', '".$data['increment_id']."', '".explode('pw :', $data['raison'])[1]."');"
             );
         }
@@ -367,7 +392,7 @@ if ((int) $db_count[0] === 0) {
         if ($data['encryption_type'] !== 'teampass_aes') {
             mysqli_query(
                 $db_link,
-                'INSERT INTO `'.$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
+                "INSERT INTO `".$pre."defuse_passwords` (`increment_id`, `type`, `object_id`, `password`) 
                 VALUES (NULL, 'suggestion', '".$data['id']."', '".$data['pw']."');"
             );
         }
@@ -418,7 +443,7 @@ if (isset($userPassword) === false || empty($userPassword) === true
         // Store fact that admin has migrated
         mysqli_query(
             $db_link,
-            'INSERT INTO `'.$pre."defuse_to_aes_migration` (`increment_id`, `user_id`, `rebuild_performed`, `timestamp`) 
+            "INSERT INTO `".$pre."defuse_to_aes_migration` (`increment_id`, `user_id`, `rebuild_performed`, `timestamp`) 
             VALUES (NULL, '".$user['id']."', 'done', '".date_timestamp_get(date_create())."');"
         );
     } elseif (isset($user['id']) === false) {

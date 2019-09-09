@@ -222,7 +222,7 @@ if (empty($_SESSION['sessionDuration']) === false) {
 
 // get some init
 if (isset($_SESSION['user_id']) === false || (int) $_SESSION['user_id'] === 0) {
-    $_SESSION['key'] = GenerateCryptKey(50, false, true, true, false);
+    $_SESSION['key'] = GenerateCryptKey(50, false, true, true, false, true, array('cpassman_dir' => '.'));
     $_SESSION['user_id'] = 0;
     $_SESSION['id'] = 1;
 }
@@ -293,6 +293,7 @@ if ((isset($SETTINGS['update_needed']) === true && ($SETTINGS['update_needed'] !
 /*
  * Set the personal SaltKey if authorized
  */
+/*
 if (isset($SETTINGS['enable_personal_saltkey_cookie']) === true
     && $SETTINGS['enable_personal_saltkey_cookie'] == 1
     && isset($_SESSION['user_id']) === true
@@ -307,6 +308,7 @@ if (isset($SETTINGS['enable_personal_saltkey_cookie']) === true
         setcookie('TeamPass_PFSK_'.md5($_SESSION['user_id']), '', time() - 3600, '/'); // empty value and old timestamp
     }
 }
+*/
 
 /* CHECK IF MAINTENANCE MODE
 * IF yes then authorize all ADMIN connections and
@@ -441,6 +443,10 @@ if (isset($_SESSION['user_id']) === true && empty($_SESSION['user_id']) === fals
             $SETTINGS
         );
 
+        if (isset($_SESSION['can_create_root_folder']) === true && (int) $_SESSION['can_create_root_folder'] === 1) {
+            array_push($_SESSION['groupes_visibles'], 0);
+        };
+
         // user type
         if (isset($LANG) === true) {
             if ((int) $_SESSION['user_admin'] === 1) {
@@ -568,3 +574,6 @@ if (isset($SETTINGS['roles_allowed_to_print']) === true
 /* CHECK NUMBER OF USER ONLINE */
 DB::query('SELECT * FROM '.prefixTable('users').' WHERE timestamp>=%i', time() - 600);
 $_SESSION['nb_users_online'] = DB::count();
+
+
+    
