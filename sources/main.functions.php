@@ -2680,7 +2680,7 @@ function ldapPosixSearch($username, $password, $SETTINGS)
                 $ldapconn,
                 $SETTINGS['ldap_search_base'],
                 $filter,
-                array('dn', 'mail', 'givenname', 'sn', 'samaccountname')
+                array('dn', 'mail', 'givenname', 'sn', 'samaccountname', 'memberof', 'primarygroupid')
             );
 
             // Check if user was found in AD
@@ -2724,9 +2724,36 @@ function ldapPosixSearch($username, $password, $SETTINGS)
                     }
                 }
 
+                //---
+// Get groups and primary group token
+$output = $entries[0]['memberof'];
+$token = $entries[0]['primarygroupid'][0];
+
+// Remove extraneous first entry
+array_shift($output);
+
+// We need to look up the primary group, get list of all groups
+$results2 = ldap_search($ldap,$ldap_dn,"(objectcategory=group)",array("distinguishedname","primarygrouptoken"));
+$entries2 = ldap_get_entries($ldap, $results2);
+
+// Remove extraneous first entry
+array_shift($entries2);
+
+// Loop through and find group with a matching primary group token
+foreach($entries2 as $e) {
+    if($e['primarygrouptoken'][0] == $token) {
+        // Primary group found, add it to output array
+        $output[] = $e['distinguishedname'][0];
+        // Break loop
+        break;
+    }
+}
+return $output;
+
+                //---
+
                 // Is user in the LDAP?
-                if (
-                    $GroupRestrictionEnabled === true
+                if ($GroupRestrictionEnabled === true
                     || ($GroupRestrictionEnabled === false
                         && (isset($SETTINGS['ldap_usergroup']) === false
                             || (isset($SETTINGS['ldap_usergroup']) === true

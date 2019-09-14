@@ -436,7 +436,7 @@ function identifyUser($sentData, $SETTINGS)
     );
 
     // Check if user exists
-    $data = DB::queryFirstRow(
+    $userData = DB::queryFirstRow(
         'SELECT *
         FROM ' . prefixTable('users') . '
         WHERE login=%s',
@@ -484,11 +484,152 @@ function identifyUser($sentData, $SETTINGS)
     $return = '';
 
     // Prepare LDAP connection if set up
-    if (
-        isset($SETTINGS['ldap_mode'])
+    if (isset($SETTINGS['ldap_mode']) === true
         && (int) $SETTINGS['ldap_mode'] === 1
         && $username !== 'admin'
     ) {
+        $ret = identifyWithLDAP(
+            $userData,
+            $passwordClear,
+            $counter,
+            $SETTINGS
+        );
+        
+        if ($ret['error'] === true) {
+            echo json_encode($ret['message']);
+        } elseif ($ret['proceedIdentification'] !== true) {
+            logEvents('failed_auth', 'user_not_exists', '', stripslashes($username), stripslashes($username));
+            echo prepareExchangedData(
+                array(
+                    'value' => '',
+                    'user_admin' => isset($_SESSION['user_admin']) ? (int) $_SESSION['user_admin'] : '',
+                    'initial_url' => isset($_SESSION['initial_url']) === true ? $_SESSION['initial_url'] : '',
+                    'pwd_attempts' => (int) $_SESSION['pwd_attempts'],
+                    'error' => 'user_not_exists8',
+                    'message' => langHdl('error_bad_credentials'),
+                ),
+                'encode'
+            );
+
+            return false;
+        } else {
+            $auth_username = $ret['auth_username'];
+            $proceedIdentification = $ret['proceedIdentification'];
+            $user_info_from_ad = $ret['user_info_from_ad'];
+        }
+        
+
+        /*
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/helpers.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/Traits/Macroable.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Contracts/Support/Arrayable.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Contracts/Support/Jsonable.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/Traits/EnumeratesValues.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/Enumerable.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/Arr.php';
+        include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/Illuminate/Support/Collection.php';
+
+        // Create the configuration array.
+        $ldapConfig = [
+            // Mandatory Configuration Options
+            'hosts'            => ['192.168.1.15'],
+            'base_dn'          => 'dc=ldap,dc=test,dc=local',
+            'username'         => 'uid=root,cn=users,dc=ldap,dc=test,dc=local',//uid=root,cn=users,dc=ldap,dc=test,dc=local
+            'password'         => $SETTINGS['ldap_bind_passwd'],
+            'schema'           => Adldap\Schemas\OpenLDAP::class,
+            'account_prefix'   => 'uid=',
+            'account_suffix'   => 'cn=users,dc=ldap,dc=test,dc=local',   //@dc=ldap,dc=test,dc=local
+            'port'             => 389,
+            'follow_referrals' => false,
+            'use_ssl'          => false,
+            'use_tls'          => false,
+            'version'          => 3,
+            'timeout'          => 15
+        ];
+        $configuration = array(
+            'user_id_key' => 'uid',
+            'account_suffix' => $ldap_suffix,
+            'person_filter' => array(
+                'category' => isset($SETTINGS['ldap_object_class']) === true ? $SETTINGS['ldap_object_class'] : 'objectCategory',
+                'person' => 'person'
+            ),
+            'base_dn' =>  $SETTINGS['ldap_domain_dn'],
+            'domain_controllers' => explode(',', $SETTINGS['ldap_domain_controler']),
+            'admin_username' => $ldap_admin_username,
+            'admin_password' => $SETTINGS['ldap_bind_passwd'],
+            'real_primarygroup' => isset($SETTINGS['ldap_real_primarygroup']) === true ? $SETTINGS['real_primarygroup'] : true,
+            'use_ssl' => isset($SETTINGS['ldap_ssl']) === true ? $SETTINGS['ldap_ssl'] : false,
+            'use_tls' => isset($SETTINGS['ldap_tls']) === true ? $SETTINGS['ldap_tls'] : false,
+            'recursive_groups' => isset($SETTINGS['ldap_recursive_groups']) === true ? $SETTINGS['ldap_recursive_groups'] : true,
+            'ad_port' => isset($SETTINGS['ldap_ad_port']) === true ? $SETTINGS['ldap_ad_port'] : '389',
+            'sso' => isset($SETTINGS['ldap_sso']) === true ? $SETTINGS['ldap_sso'] : false,
+        );
+
+        $ad = new SplClassLoader('Adldap', $SETTINGS['cpassman_dir'] . '/includes/libraries');
+        $ad->register();
+        $ad = new Adldap\Adldap();
+        $ad->addProvider($ldapConfig);
+
+
+        
+        try {
+            $provider = $ad->connect();
+
+            echo $provider->auth()->attempt('tutu', 'test')." - ";
+            //print_r($provider);
+            //$result = $provider->search()->findByDn('uid=nils,cn=users,dc=ldap,dc=test,dc=local');
+            //print_r($result);
+
+            $search = $provider->search();
+            try {
+
+                $record = $search->findBy('sn', 'tutu');
+                //$result = $provider->search()->read()->where('objectClass', '*')->get();
+                //$results = $provider->search()->in('dc=ldap,dc=test,dc=local')->get();
+                $result = $search->where('samaccountname', '=', 'tutu')->get();
+                print_r($result);
+            } catch (Adldap\Models\ModelNotFoundException $e) {
+                // Record wasn't found!
+                echo 'ERROR1 ';
+            }
+            try {
+                echo 'ici ';
+                //$search->select(['dn', 'mail', 'givenname', 'sn', 'samaccountname', 'shadowexpire']);
+                //print_r($search);
+                $record = $search->findBy('samaccountname', 'tutu');
+                echo 'ici ';print_r($record);
+                echo $provider->getConnection()->getLastError();
+                $record = $search->get();
+                echo $provider->getConnection()->getLastError();
+                echo 'ici ';
+                //$record = $provider->search()->where('samaccountname', '=', 'nils')->get();
+                print_r($record);
+                if ($record) {
+                    // Record was found!    
+                    echo ($record);
+                } else {
+                    // Hmm, looks like we couldn't find anything... 
+                    echo "Error - Not found ";
+                }
+            } catch (LDAP\Adldap\Auth\BindException $e) {
+                // Failed to connect.
+                echo "Error - Not connected ";
+                return $e;
+            }
+
+
+
+                
+        
+            // Great, we're connected!
+        } catch (LDAP\Adldap\Auth\BindException $e) {
+            // Failed to connect.
+            return $e;
+        }
+        */
+        
+
+        /*
         //Multiple Domain Names
         if (strpos(html_entity_decode($username), '\\') === true) {
             $ldap_suffix = '@' . substr(html_entity_decode($username), 0, strpos(html_entity_decode($username), '\\'));
@@ -557,6 +698,7 @@ function identifyUser($sentData, $SETTINGS)
                 $user_info_from_ad = $ret['user_info_from_ad'];
             }
         }
+        */
     }
 
     // Check Yubico
@@ -1428,8 +1570,222 @@ function identifyUser($sentData, $SETTINGS)
 /**
  * Undocumented function.
  *
+ * @param string $userData      User's info'
+ * @param string $passwordClear Password
+ * @param int    $userExists    User exists in teampass
+ * @param array  $SETTINGS      Teampass settings
+ *
+ * @return array
+ */
+function identifyWithLDAP($userData, $passwordClear, $userExists, $SETTINGS)
+{
+    // Debug
+    debugIdentify(
+        DEBUGLDAP,
+        DEBUGLDAPFILE,
+        "Get all ldap params : \n" .
+            'base_dn : ' . $SETTINGS['ldap_domain_dn'] . "\n" .
+            'account_suffix : ' . $SETTINGS['ldap_suffix'] . "\n" .
+            'domain_controllers : ' . $SETTINGS['ldap_domain_controler'] . "\n" .
+            'ad_port : ' . $SETTINGS['ldap_port'] . "\n" .
+            'use_ssl : ' . $SETTINGS['ldap_ssl'] . "\n" .
+            'use_tls : ' . $SETTINGS['ldap_tls'] . "\n*********\n\n"
+    );
+
+    // Load AntiXSS
+    include_once $SETTINGS['cpassman_dir'] . '/includes/libraries/protect/AntiXSS/AntiXSS.php';
+    $antiXss = new protect\AntiXSS\AntiXSS();
+
+    // load passwordLib library
+    $pwdlib = new SplClassLoader('PasswordLib', $SETTINGS['cpassman_dir'] . '/includes/libraries');
+    $pwdlib->register();
+    $pwdlib = new PasswordLib\PasswordLib();
+
+    // Load Adldap
+    $ad = new SplClassLoader('Adldap', $SETTINGS['cpassman_dir'] . '/includes/libraries');
+    $ad->register();
+    
+    // Init
+    $SETTINGS['ldap_type'] = 'openldap';
+    $ldapConnection = false;
+
+
+    // Posix style LDAP handles user searches a bit differently
+    if ($SETTINGS['ldap_type'] === 'openldap') {
+        $ldap_suffix = ',' . $SETTINGS['ldap_suffix'] . ',' . $SETTINGS['ldap_domain_dn'];
+        $ldap_admin_username = $SETTINGS['ldap_user_attribute'].'='.$SETTINGS['ldap_bind_dn'];
+        $username_adapted = $SETTINGS['ldap_user_attribute'] . '=' . $userData['login'];
+    } elseif ($SETTINGS['ldap_type'] === 'windows') {
+        //Multiple Domain Names
+        $ldap_suffix = $SETTINGS['ldap_suffix'];
+        $ldap_admin_username = $SETTINGS['ldap_bind_dn'];
+        $username_adapted = $userData['login'];
+    }
+
+    
+    // Ensure no double commas exist in ldap_suffix
+    $ldap_suffix = str_replace(',,', ',', $ldap_suffix);
+        
+    // Prepare LDAP configuration
+    $configuration = array(
+        'user_id_key' => isset($SETTINGS['ldap_user_attribute']) === true ? $SETTINGS['ldap_user_attribute'] : '',
+        'account_suffix' => $ldap_suffix,
+        'person_filter' => array(
+            'category' => isset($SETTINGS['ldap_object_class']) === true ? $SETTINGS['ldap_object_class'] : 'objectCategory',
+            'person' => 'person'
+        ),
+        'base_dn' =>  $SETTINGS['ldap_domain_dn'],
+        'domain_controllers' => explode(',', $SETTINGS['ldap_domain_controler']),
+        'admin_username' => $ldap_admin_username,
+        'admin_password' => $SETTINGS['ldap_bind_passwd'],
+        'real_primarygroup' => isset($SETTINGS['ldap_real_primarygroup']) === true ? $SETTINGS['real_primarygroup'] : true,
+        'use_ssl' => isset($SETTINGS['ldap_ssl']) === true ? $SETTINGS['ldap_ssl'] : false,
+        'use_tls' => isset($SETTINGS['ldap_tls']) === true ? $SETTINGS['ldap_tls'] : false,
+        'recursive_groups' => isset($SETTINGS['ldap_recursive_groups']) === true ? $SETTINGS['ldap_recursive_groups'] : true,
+        'ad_port' => isset($SETTINGS['ldap_ad_port']) === true ? $SETTINGS['ldap_ad_port'] : '389',
+        'sso' => isset($SETTINGS['ldap_sso']) === true ? $SETTINGS['ldap_sso'] : false,
+    );
+
+    // COnnect to AD
+    $ad = new Adldap\Adldap($configuration);
+
+    // Debug
+    debugIdentify(
+        DEBUGLDAP,
+        DEBUGLDAPFILE,
+        'Create new adldap object : ' . $ad->getLastError() . "\n\n\n"
+    );
+
+
+    // Authenticate the user
+    if ($ad->authenticate($username_adapted, $passwordClear) === true) {
+        // Get info about user
+        $adUserInfo = $ad->user()->find($userData['login']);
+
+        if ($adUserInfo['shadowexpire'] === 0) {
+            // User password is expired
+            return array(
+                'error' => true,
+                'value' => '',
+                'user_admin' => isset($_SESSION['user_admin']) ? /* @scrutinizer ignore-type */ (int) $antiXss->xss_clean($_SESSION['user_admin']) : '',
+                'initial_url' => @$_SESSION['initial_url'],
+                'pwd_attempts' => /* @scrutinizer ignore-type */ $antiXss->xss_clean($_SESSION['pwd_attempts']),
+                'error' => 'user_not_exists6',
+                'message' => langHdl('error_password_has_expired'),
+            );
+        }
+
+        if ($adUserInfo['shadowinactive'] === 1) {
+            // User is disabled
+            return array(
+                'error' => true,
+                'value' => '',
+                'user_admin' => isset($_SESSION['user_admin']) ? /* @scrutinizer ignore-type */ (int) $antiXss->xss_clean($_SESSION['user_admin']) : '',
+                'initial_url' => @$_SESSION['initial_url'],
+                'pwd_attempts' => /* @scrutinizer ignore-type */ $antiXss->xss_clean($_SESSION['pwd_attempts']),
+                'error' => 'user_not_exists6',
+                'message' => langHdl('error_bad_credentials'),
+            );
+        }
+
+
+        
+
+        //print_r($adUserInfo);
+        //echo " ;; ".$ad->user()->passwordExpiry($username)." ;; ";
+
+        // Is user in allowed group
+        if (isset($SETTINGS['ldap_allowed_usergroup']) === true
+            && empty($SETTINGS['ldap_allowed_usergroup']) === false
+        ) {
+            if (array_key_exists('memberof', $adUserInfo)) {
+                if (is_array($adUserInfo['memberof'])) {
+                    $groups = array();
+                    foreach ($adUserInfo['memberof'] as $group) {
+                        $explodedDn = ldap_explode_dn($group, true);
+                        array_push($groups, $explodedDn[0]);
+                    }
+                    if (in_array($SETTINGS['ldap_allowed_usergroup'], $groups) === true) {
+                        $ldapConnection = true;
+                    }
+                }
+            }
+        } else {
+            $ldapConnection = true;
+        }
+
+        // Update user's password
+        if ($ldapConnection === true) {
+            $userData['pw'] = $pwdlib->createPasswordHash($passwordClear);
+
+            // Do things if user exists in TP
+            if ($userExists > 0) {
+                // Update pwd in TP database
+                /*DB::update(
+                    prefixTable('users'),
+                    array(
+                        'pw' => $userData['pw'],
+                        'login' => $userData['login'],
+                    ),
+                    'id = %i',
+                    $userData['id']
+                );*/
+
+                // No user creation is requested
+                $proceedIdentification = true;
+            }
+        }
+    } else {
+        // Debug
+        debugIdentify(
+            DEBUGLDAP,
+            DEBUGLDAPFILE,
+            'User not granted - bad password?\n\n' . $ad->getLastError() . "\n\n\n"
+        );
+
+        // CLear the password in database with random token
+        DB::update(
+            prefixTable('users'),
+            array(
+                'pw' => $pwdlib->createPasswordHash($pwdlib->getRandomToken(12)),
+                'login' => $userData['login'],
+            ),
+            'id = %i',
+            $userData['id']
+        );
+
+        $ldapConnection = false;
+    }
+
+    
+
+    // Debug
+    debugIdentify(
+        DEBUGLDAP,
+        DEBUGLDAPFILE,
+        'After authenticate : ' . $ad->getLastError() . "\n\n\n" .
+            'ldap status : ' . $ldapConnection . "\n\n\n"
+    );
+
+    return array(
+        'error' => false,
+        'message' => $ldapConnection,
+        'auth_username' => $userData['login'],
+        'proceedIdentification' => $proceedIdentification,
+        'user_info_from_ad' => array(
+            'email' => $adUserInfo['mail'],
+            'givenname' => $adUserInfo['givenname'],
+            'sn' => $adUserInfo['sn'],
+            'cn' => $adUserInfo['cn']
+        ),
+    );
+}
+
+/**
+ * Undocumented function.
+ *
  * @param array  $data          Username
- * @param string $ldap_suffix   Suffix
+ * @param string $
  * @param string $passwordClear Password
  * @param int    $counter       User exists in teampass
  * @param array  $SETTINGS      Teampass settings
@@ -1585,7 +1941,7 @@ function identifyViaLDAPPosixSearch($data, $ldap_suffix, $passwordClear, $counte
                         'Group was found : ' . var_export($GroupRestrictionEnabled, true) . "\n"
                     );
                 }
-
+                
                 // Is user in the LDAP?
                 if (
                     $GroupRestrictionEnabled === true

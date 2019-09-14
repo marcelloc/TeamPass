@@ -17,6 +17,7 @@
  */
 
 return array(
+    'error_password_has_expired' => 'Your AD password has expired!',
     'all_fields_mandatory' => 'All fields are mandatory',
     'history_insert_entry' => 'Insert in History',
     'clear_form' => 'Clear form',
